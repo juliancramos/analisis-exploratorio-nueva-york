@@ -24,6 +24,7 @@ Durante ambas fases se utilizaron fuentes oficiales del portal **NYC Open Data**
 El enfoque integró métodos estadísticos, visualización y aprendizaje automático para comprender cómo se relacionan variables como la pobreza, el nivel educativo, la seguridad y la movilidad dentro del territorio neoyorquino.
 
 
+---
 
 ## Actividades Realizadas
 
@@ -46,15 +47,17 @@ Cada conjunto fue analizado para identificar su estructura, variables disponible
 ---
 
 ### **3. Configuración del entorno distribuido y carga de datos**
-El procesamiento se realizó sobre un clúster propio de **Apache Spark** configurado manualmente en tres máquinas virtuales con sistema operativo **Rocky Linux**. Una de las máquinas actuó como nodo master y las otras dos como nodos worker, comunicadas mediante red interna y autenticación SSH.  
+El procesamiento se realizó sobre un clúster propio de **Apache Spark** configurado manualmente en tres máquinas virtuales con sistema operativo **Rocky Linux**:
 
-Desde **JupyterLab**, se ejecutaron las tareas de carga, exploración, transformación y modelado en el entorno distribuido, lo que permitió trabajar con los distintos conjuntos de datos en paralelo y optimizar la ejecución de los análisis.
+- **1 nodo master** (que también cumple función de worker)
+- **2 nodos worker**
+
+Cada nodo posee una dirección IP específica, comunicados mediante red interna y autenticación SSH. Desde **JupyterLab**, se ejecutaron las tareas de carga, exploración, transformación y modelado en el entorno distribuido, lo que permitió trabajar con los distintos conjuntos de datos en paralelo y optimizar la ejecución de los análisis.
 
 ---
 
 ### **4. Análisis exploratorio y visualizaciones**
-Se aplicaron métodos de estadística descriptiva y visualización para comprender la distribución y comportamiento de las variables. Se generaron tablas agregadas, histogramas, boxplots, mapas de calor y gráficos comparativos que permitieron observar las diferencias entre distritos.  
-
+Se aplicaron métodos de estadística descriptiva y visualización para comprender la distribución y comportamiento de las variables. Se generaron tablas agregadas, histogramas, boxplots, mapas de calor y gráficos comparativos que permitieron observar las diferencias entre distritos.
 
 ---
 
@@ -74,16 +77,52 @@ Se realizaron transformaciones adicionales que facilitaron la modelación y el a
 
 Estas transformaciones permitieron relacionar de forma más precisa las distintas dimensiones sociales y urbanas consideradas en el estudio.
 
+
+#### Normalización de datos
+
+- Se creó una variable binaria `label` a partir de `NYCgov_Income_Norm`:
+  - **1 (alta pobreza):** ≤ 0.2586 (percentil 25)
+  - **0 (baja pobreza):** > 0.2586
+- Se aplicó **StandardScaler** (media=0, desviación estándar=1) a los features seleccionados.
+
 ---
 
 ### **7. Modelado y técnicas de aprendizaje automático**
 Para ampliar el alcance del análisis se aplicaron modelos de **aprendizaje supervisado y no supervisado** mediante la biblioteca **MLlib** de Spark:  
 
-- **Regresión Logística:** utilizada para estimar la probabilidad de pobreza a partir de variables socioeconómicas y educativas.  
-- **Red Neuronal Perceptrón Multicapa (MLP):** empleada para capturar relaciones no lineales entre las mismas variables.  
-- **K-Means (K=5):** aplicado para agrupar distritos según características sociales y económicas compartidas.  
+#### Modelo supervisado: Regresión Logística
 
-Los modelos supervisados alcanzaron métricas altas de precisión y *AUC ROC*, mientras que el modelo no supervisado permitió identificar agrupaciones territoriales con patrones sociales diferenciados.
+- Se entrenó un modelo de **Logistic Regression** con los datos normalizados.
+- División de datos: **75% entrenamiento** / **25% prueba**.
+- **Resultados del modelo base:**
+
+| Métrica | Valor |
+|---|---|
+| AUC ROC | 1.0000 |
+| Accuracy | 0.9999 |
+| F1-score | 0.9999 |
+
+
+
+#### Modelo supervisado: Red Neuronal Perceptrón Multicapa (MLP)
+
+- Empleada para capturar relaciones no lineales entre las variables socioeconómicas y educativas.
+- Los resultados confirmaron métricas altas de precisión y *AUC ROC*, comparables con la Regresión Logística.
+
+#### Modelo no supervisado: K-Means Clustering
+
+- Se entrenaron modelos K-Means con K = 2, 3, 4 y 5.
+- Se evaluaron con **Silhouette Score**:
+
+| K | Silhouette Score |
+|---|---|
+| 2 | ~0.46 |
+| 3 | ~0.42 |
+| 4 | ~0.41 |
+| 5 | ~0.41 |
+
+- Se seleccionó **K=5** como valor óptimo, equilibrando silhouette score e interpretabilidad.
+- Se identificaron y analizaron los centroides de cada clúster en el espacio de features normalizados.
 
 ---
 
@@ -105,25 +144,16 @@ A partir de los resultados se plantean líneas de acción orientadas a la mejora
 
 ---
 
-## Bonos Académicos Implementados
-- Extracción y análisis de datos demográficos mediante **web scraping** desde el portal del Departamento de Salud de Nueva York.  
-- Integración de datos climáticos mediante la **API de OpenWeatherMap**.  
-- Implementación de un **modelo adicional de aprendizaje profundo (MLP)** y comparación de su desempeño con la regresión logística.  
-
----
 
 ## Herramientas Utilizadas
-- Apache Spark (PySpark, MLlib)  
-- JupyterLab en entorno HPC  
-- Pandas, Matplotlib, Seaborn  
-- APIs públicas 
-- LaTeX para documentación  
+
+| Herramienta | Uso |
+|---|---|
+| Apache Spark (PySpark, MLlib) | Procesamiento distribuido, StandardScaler, LogisticRegression, KMeans |
+| JupyterLab | Entorno de desarrollo en clúster HPC |
+| Pandas | Manipulación de DataFrames para visualización |
+| Matplotlib / Seaborn | Visualización de datos (heatmaps, histogramas, boxplots) |
+| APIs públicas | OpenWeatherMap para datos climáticos |
+| LaTeX | Documentación formal |
 
 ---
-
-## Nota Final
-El proyecto culmina con un análisis integral de las dinámicas sociales y urbanas que caracterizan a la ciudad de Nueva York. A través del procesamiento de datos a gran escala, fue posible vincular indicadores de pobreza, educación, seguridad y movilidad, revelando cómo estos factores interactúan dentro del territorio y condicionan la calidad de vida de sus habitantes.  
-
-La aplicación de técnicas de Big Data  permitió  cumplir con los objetivos de comprender los patrones existentes y generar recomendaciones para la planificación y la toma de decisiones públicas. Así mismo, el trabajo plantea la importancia de fortalecer el análisis de datos como una práctica continua, orientada a mejorar la calidad y estructura de la información disponible. Mantener procesos de registro más completos y consistentes permitirá en el futuro contar con datos cada vez más precisos, facilitando decisiones urbanas más acertadas y sostenibles.
-
-
